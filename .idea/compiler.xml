@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <bytecodeTargetLevel target="17">
+      <module name="Car_Sharing.Car_Sharing-task-out.main" target="15" />
+      <module name="Car_Sharing.Car_Sharing-task.main" target="15" />
+      <module name="Car_Sharing.util.main" target="15" />
+    </bytecodeTargetLevel>
+  </component>
+</project>

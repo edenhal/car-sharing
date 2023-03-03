@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Car_Sharing.iml" filepath="$PROJECT_DIR$/.idea/modules/Car_Sharing.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Car Sharing/task/Car_Sharing.Car_Sharing-task.iml" filepath="$PROJECT_DIR$/.idea/modules/Car Sharing/task/Car_Sharing.Car_Sharing-task.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Car Sharing/task/out/Car_Sharing.Car_Sharing-task-out.iml" filepath="$PROJECT_DIR$/.idea/modules/Car Sharing/task/out/Car_Sharing.Car_Sharing-task-out.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Car Sharing/task/out/Car_Sharing.Car_Sharing-task-out.main.iml" filepath="$PROJECT_DIR$/.idea/modules/Car Sharing/task/out/Car_Sharing.Car_Sharing-task-out.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Car Sharing/task/out/Car_Sharing.Car_Sharing-task-out.test.iml" filepath="$PROJECT_DIR$/.idea/modules/Car Sharing/task/out/Car_Sharing.Car_Sharing-task-out.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Car Sharing/task/Car_Sharing.Car_Sharing-task.main.iml" filepath="$PROJECT_DIR$/.idea/modules/Car Sharing/task/Car_Sharing.Car_Sharing-task.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Car Sharing/task/Car_Sharing.Car_Sharing-task.test.iml" filepath="$PROJECT_DIR$/.idea/modules/Car Sharing/task/Car_Sharing.Car_Sharing-task.test.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/util/Car_Sharing.util.iml" filepath="$PROJECT_DIR$/.idea/modules/util/Car_Sharing.util.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/util/Car_Sharing.util.main.iml" filepath="$PROJECT_DIR$/.idea/modules/util/Car_Sharing.util.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/util/Car_Sharing.util.test.iml" filepath="$PROJECT_DIR$/.idea/modules/util/Car_Sharing.util.test.iml" />
+    </modules>
+  </component>
+</project>

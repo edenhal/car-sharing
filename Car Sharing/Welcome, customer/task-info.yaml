@@ -1,0 +1,1522 @@
+type: edu
+custom_name: "Welcome, customer!"
+files:
+- name: src/carsharing/Main.java
+  visible: true
+  text: |-
+    package carsharing;
+
+    import carsharing.dao.CarDao;
+    import carsharing.dao.CarDaoImpl;
+    import carsharing.dao.CompanyDao;
+    import carsharing.dao.CompanyDaoImpl;
+    import carsharing.dao.model.Car;
+    import carsharing.dao.model.Company;
+    import carsharing.utils.CreateUpdateScriptProcessor;
+    import carsharing.utils.DbUtil;
+
+    import java.util.List;
+    import java.util.Optional;
+    import java.util.Scanner;
+
+    public class Main {
+        private static final Scanner scanner = new Scanner(System.in);
+        private static final DbUtil dbUtil = DbUtil.getDbUtil();
+
+        public static void main(String[] args) {
+    //        CreateUpdateScriptProcessor.executeCreate();
+            CreateUpdateScriptProcessor.executeCreateForCheck();
+
+            boolean exit = false;
+            while (!exit) {
+                printMainMenu();
+                switch (scanner.nextInt()) {
+                    case 0 -> exit = true;
+                    case 1 -> login();
+                }
+            }
+            dbUtil.closeConnection();
+        }
+
+        private static void printMainMenu() {
+            System.out.println("1. Log in as a manager\n0. Exit");
+        }
+
+        private static void printLoginMenu() {
+            System.out.println("\n1. Company list\n" +
+                    "2. Create a company\n" +
+                    "0. Back");
+        }
+
+        private static void printCarMenu(Company company) {
+            System.out.println("\n" + company.getName() + " company\n" +
+                    "1. Car list\n" +
+                    "2. Create a car\n" +
+                    "0. Back");
+        }
+
+        private static void login() {
+            CompanyDao companyDao = new CompanyDaoImpl();
+            boolean exit = false;
+            while (!exit) {
+                printLoginMenu();
+                int option = scanner.nextInt();
+                scanner.nextLine();
+                switch (option) {
+                    case 1 -> {
+                        System.out.println("Choose a company:");
+                        Optional<List<Company>> optionalCompanies = companyDao.getAllCompanies();
+                        if (optionalCompanies.isPresent()) {
+                            List<Company> companies = optionalCompanies.get();
+                            companies.forEach(company ->
+                                    System.out.printf("%d. %s%n", (companies.indexOf(company) + 1), company));
+                            System.out.println("0. Back");
+                            int companyPosition = scanner.nextInt();
+                            if (companyPosition > 0) {
+                                carList(companies.get(companyPosition - 1));
+                            }
+                        } else {
+                            System.out.println("The company list is empty!");
+                        }
+                    }
+                    case 2 -> {
+                        System.out.println("Enter the company name:");
+                        if (companyDao.setCompany(scanner.nextLine()) > 0) {
+                            System.out.println("The company was created!");
+                        } else {
+                            System.out.println("Something went wrong. Please try to add company again");
+                        }
+                    }
+                    case 0 -> exit = true;
+                }
+            }
+        }
+
+        private static void carList(Company company) {
+            CarDao carDao = new CarDaoImpl();
+            boolean exit = false;
+            while (!exit) {
+                printCarMenu(company);
+                int option = scanner.nextInt();
+                scanner.nextLine();
+                switch (option) {
+                    case 1 -> {
+                        System.out.println(company.getName() + " cars:");
+                        List<Car> cars = carDao.getCarsByCompany(company);
+                        if (!cars.isEmpty()) {
+                            cars.forEach(car ->
+                                    System.out.printf("%d. %s%n", (cars.indexOf(car) + 1), car));
+                        } else {
+                            System.out.println("The car list is empty!");
+                        }
+                    }
+                    case 2 -> {
+                        System.out.println("Enter the car name:");
+                        if (carDao.insertCar(new Car(0, scanner.nextLine(), company.getID())) > 0) {
+                            System.out.println("The car was created!");
+                        } else {
+                            System.out.println("Something went wrong. Please try to add car again");
+                        }
+                    }
+                    case 0 -> exit = true;
+                }
+            }
+
+
+
+        }
+
+
+    }
+  learner_created: false
+- name: src/carsharing/dao/model/Company.java
+  visible: true
+  text: |
+    package carsharing.dao.model;
+
+    public class Company implements Comparable<Company> {
+
+        private int ID;
+        private String name;
+
+        public Company(int ID, String name) {
+            this.ID = ID;
+            this.name = name;
+        }
+
+        public int getID() {
+            return ID;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setID(int ID) {
+            this.ID = ID;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public int compareTo(Company anotherCompany) {
+            if (this.ID == anotherCompany.getID()) {
+                return this.name.compareTo(anotherCompany.name);
+            }
+            return this.ID - anotherCompany.getID();
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+  learner_created: false
+- name: src/carsharing/dao/CompanyDao.java
+  visible: true
+  text: |
+    package carsharing.dao;
+
+    import carsharing.dao.model.Company;
+
+    import java.util.List;
+    import java.util.Optional;
+
+    public interface CompanyDao {
+
+        Optional<List<Company>> getAllCompanies();
+        Company getCompanyByName(String name);
+        int setCompany(String name);
+
+    }
+  learner_created: false
+- name: src/carsharing/dao/CompanyDaoImpl.java
+  visible: true
+  text: |
+    package carsharing.dao;
+
+    import carsharing.dao.model.Company;
+    import carsharing.utils.DbUtil;
+
+    import java.sql.ResultSet;
+    import java.sql.SQLException;
+    import java.util.ArrayList;
+    import java.util.List;
+    import java.util.Optional;
+
+    public class CompanyDaoImpl implements CompanyDao {
+        DbUtil dbUtil = DbUtil.getDbUtil();
+
+        @Override
+        public Optional<List<Company>> getAllCompanies() {
+            List<Company> companies = new ArrayList<>();
+            String query = "SELECT * FROM COMPANY ORDER BY ID;";
+            Optional<ResultSet> optionalResultSet = dbUtil.executeQuery(query);
+            if (optionalResultSet.isEmpty()) return Optional.empty();
+            ResultSet resultSet = optionalResultSet.get();
+            try {
+                while (resultSet.next()) {
+                    companies.add(new Company(resultSet.getInt("ID"), resultSet.getString("NAME")));
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return companies.isEmpty() ? Optional.empty() : Optional.of(new ArrayList<>(companies));
+        }
+
+        @Override
+        public Company getCompanyByName(String name) {
+            return null;
+        }
+
+        @Override
+        public int setCompany(String name) {
+            return dbUtil.executeUpdate("INSERT INTO COMPANY (NAME) " +
+                    "VALUES ('" + name + "');");
+        }
+    }
+  learner_created: false
+- name: src/carsharing/utils/DbUtil.java
+  visible: true
+  text: |
+    package carsharing.utils;
+
+    import java.sql.*;
+    import java.util.Optional;
+
+    public class DbUtil {
+
+        private static volatile DbUtil singleInstance;
+        private static final String JDBC_DRIVER = "org.h2.Driver";
+        private static final String DB_URL = "jdbc:h2:./src/carsharing/db/carsharing;Mode=MySQL";
+        private static Connection connection;
+
+        private DbUtil() {
+            try {
+                Class.forName(JDBC_DRIVER);
+                connection = DriverManager.getConnection(DB_URL);
+                connection.setAutoCommit(true);
+            } catch (SQLException | ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
+        public static DbUtil getDbUtil() {
+            DbUtil innerInstance = singleInstance;
+            if (innerInstance != null) {
+                return innerInstance;
+            }
+
+            synchronized (DbUtil.class) {
+                if (singleInstance == null) {
+                    singleInstance = new DbUtil();
+                }
+                return singleInstance;
+            }
+        }
+
+        public int executeUpdate(String query) {
+            try {
+                return connection.createStatement().executeUpdate(query);
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return -1;
+            }
+        }
+
+        public boolean execute(String query) {
+            try {
+                return connection.createStatement().execute(query);
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+
+        public Optional<ResultSet> executeQuery(String query) {
+            try {
+                return Optional.ofNullable(connection.createStatement().executeQuery(query));
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return Optional.empty();
+            }
+        }
+
+        public Optional<DatabaseMetaData> getMetaData() {
+            try {
+                return Optional.ofNullable(connection.getMetaData());
+            } catch (SQLException e) {
+                e.printStackTrace();
+                return Optional.empty();
+            }
+        }
+
+        public void closeConnection() {
+            try {
+                connection.close();
+            } catch (SQLException e) {
+                System.out.println("Error during connection closing.");
+                e.printStackTrace();
+            }
+        }
+
+    }
+  learner_created: false
+- name: src/carsharing/utils/CreateUpdateScriptProcessor.java
+  visible: true
+  text: |
+    package carsharing.utils;
+
+    import carsharing.dao.VersionDao;
+    import carsharing.dao.VersionDaoImpl;
+
+    import java.io.File;
+    import java.io.FileNotFoundException;
+    import java.util.List;
+    import java.util.Scanner;
+
+    public class CreateUpdateScriptProcessor {
+
+        private static final DbUtil dbUtil = DbUtil.getDbUtil();
+        private static final VersionDao versionDao = new VersionDaoImpl();
+        private static final File createScripts =
+                new File("./Car Sharing/task/src/carsharing/resources/createscripts");
+        private static final File createScriptsForCheck =
+                new File("src/carsharing/resources/createscripts");
+        private static final int SCRIPT_SUCCESSFULLY_EXECUTED = 1;
+        private static final int SCRIPT_FAILED = -1;
+
+        public static void executeCreate() {
+            initialiseVersionTable();
+            if (createScripts.isDirectory()) {
+                File[] files = createScripts.listFiles();
+                if (files != null && files.length != 0) {
+                    StringBuilder result = new StringBuilder();
+                    List<String> versions = versionDao.getVersions();
+                    for (File file : files) {
+                        if (!versions.contains(file.getName())) {
+                            try (Scanner scanner = new Scanner(file)) {
+                                scanner.useDelimiter(";");
+                                int scriptResult = SCRIPT_SUCCESSFULLY_EXECUTED;
+                                while (scanner.hasNext()) {
+                                    if (dbUtil.executeUpdate(scanner.next().trim()) == -1) {
+                                        scriptResult = SCRIPT_FAILED;
+                                    }
+                                }
+                                if (scriptResult == SCRIPT_SUCCESSFULLY_EXECUTED) {
+                                    versionDao.insertNewVersion(file.getName());
+                                    result.append("Script ").append(file.getName()).append(" executed\n");
+                                }
+                            } catch (FileNotFoundException e) {
+                                System.out.println("File not found");
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                    System.out.println(result.toString().equals("") ? "No new scripts executed\n" : result.toString());
+                }
+            }
+        }
+
+        public static void executeCreateForCheck() {
+            if (createScriptsForCheck.isDirectory()) {
+                File[] files = createScriptsForCheck.listFiles();
+                if (files != null && files.length != 0) {
+                    for (File file : files) {
+                        try (Scanner scanner = new Scanner(file)) {
+                            scanner.useDelimiter(";");
+                            while (scanner.hasNext()) {
+                                dbUtil.executeUpdate(scanner.next().trim());
+                            }
+                        } catch (FileNotFoundException e) {
+                            System.out.println("File not found");
+                            e.printStackTrace();
+                        }
+
+                    }
+                }
+            }
+        }
+
+        private static void initialiseVersionTable() {
+            dbUtil.executeUpdate("CREATE TABLE IF NOT EXISTS VERSION" +
+                    "(ID INTEGER AUTO_INCREMENT," +
+                    "VERSION_NAME VARCHAR(64)," +
+                    "CONSTRAINT pk_version_id PRIMARY KEY(ID)," +
+                    "CONSTRAINT uq_version_name UNIQUE(VERSION_NAME))");
+        }
+
+    }
+  learner_created: false
+- name: src/carsharing/resources/createscripts/create_scripts_stage_three.sql
+  visible: true
+  text: "CREATE TABLE IF NOT EXISTS CAR(\n\tID INTEGER AUTO_INCREMENT,\n\tNAME VARCHAR\
+    \ NOT NULL,\n\tCOMPANY_ID INTEGER NOT NULL,\n\tCONSTRAINT pk_car_id PRIMARY KEY(ID),\n\
+    \tCONSTRAINT uq_car_name UNIQUE(NAME),\n\tCONSTRAINT fk_car_id_to_company_id FOREIGN\
+    \ KEY(COMPANY_ID) REFERENCES COMPANY(ID)\n);"
+  learner_created: false
+- name: src/carsharing/dao/model/Version.java
+  visible: true
+  text: |
+    package carsharing.dao.model;
+
+    public class Version {
+
+        private int id;
+        private String version;
+
+        public Version(int id, String version) {
+            this.id = id;
+            this.version = version;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public String getVersion() {
+            return version;
+        }
+
+        public void setId(int id) {
+            this.id = id;
+        }
+
+        public void setVersion(String version) {
+            this.version = version;
+        }
+    }
+  learner_created: false
+- name: src/carsharing/dao/VersionDao.java
+  visible: true
+  text: |
+    package carsharing.dao;
+
+    import java.util.List;
+
+    public interface VersionDao {
+
+        List<String> getVersions();
+        int insertNewVersion(String versionName);
+
+    }
+  learner_created: false
+- name: src/carsharing/dao/VersionDaoImpl.java
+  visible: true
+  text: |
+    package carsharing.dao;
+
+    import carsharing.utils.DbUtil;
+
+    import java.sql.ResultSet;
+    import java.sql.SQLException;
+    import java.util.ArrayList;
+    import java.util.List;
+    import java.util.Optional;
+
+    public class VersionDaoImpl implements VersionDao {
+
+        private DbUtil dbUtil = DbUtil.getDbUtil();
+
+        @Override
+        public List<String> getVersions() {
+            List<String> versions = new ArrayList<>();
+            Optional<ResultSet> optionalResultSet = dbUtil.executeQuery("SELECT * FROM VERSION ORDER BY ID;");
+            if (optionalResultSet.isPresent()) {
+                ResultSet resultSet = optionalResultSet.get();
+                try {
+                    while (resultSet.next()) {
+                        versions.add(resultSet.getString("VERSION_NAME"));
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+            return versions;
+        }
+
+        @Override
+        public int insertNewVersion(String versionName) {
+            return dbUtil.executeUpdate("INSERT INTO VERSION (VERSION_NAME)" +
+                    "VALUES ('" + versionName + "');");
+        }
+    }
+  learner_created: false
+- name: src/carsharing/resources/createscripts/stage_one_and_two.sql
+  visible: true
+  text: "CREATE TABLE IF NOT EXISTS COMPANY(\n\tID INTEGER AUTO_INCREMENT,\n\tNAME\
+    \ VARCHAR NOT NULL,\n\tCONSTRAINT pk_company_id PRIMARY KEY(ID),\n\tCONSTRAINT\
+    \ uq_company_name UNIQUE(NAME)\n);"
+  learner_created: false
+- name: src/carsharing/dao/model/Car.java
+  visible: true
+  text: |
+    package carsharing.dao.model;
+
+    public class Car {
+
+        private int ID;
+        private String name;
+        private int companyId;
+
+        public Car(int ID, String name, int companyId) {
+            this.ID = ID;
+            this.name = name;
+            this.companyId = companyId;
+        }
+
+        public int getID() {
+            return ID;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public int getCompanyId() {
+            return companyId;
+        }
+
+        public void setID(int ID) {
+            this.ID = ID;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public void setCompanyId(int companyId) {
+            this.companyId = companyId;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+  learner_created: false
+- name: src/carsharing/dao/CarDao.java
+  visible: true
+  text: |
+    package carsharing.dao;
+
+    import carsharing.dao.model.Car;
+    import carsharing.dao.model.Company;
+
+    import java.util.List;
+
+    public interface CarDao {
+
+        List<Car> getCarsByCompany(Company company);
+        int insertCar(Car car);
+
+    }
+  learner_created: false
+- name: src/carsharing/dao/CarDaoImpl.java
+  visible: true
+  text: |
+    package carsharing.dao;
+
+    import carsharing.dao.model.Car;
+    import carsharing.dao.model.Company;
+    import carsharing.utils.DbUtil;
+
+    import java.sql.ResultSet;
+    import java.sql.SQLException;
+    import java.util.ArrayList;
+    import java.util.List;
+    import java.util.Optional;
+
+    public class CarDaoImpl implements CarDao{
+
+        private final DbUtil dbUtil = DbUtil.getDbUtil();
+
+        @Override
+        public List<Car> getCarsByCompany(Company company) {
+            List<Car> cars = new ArrayList<>();
+            Optional<ResultSet> optionalResultSet = dbUtil.executeQuery("SELECT * FROM CAR " +
+                    "WHERE COMPANY_ID = '" + company.getID() + "'" +
+                    "ORDER BY ID;");;
+            if (optionalResultSet.isPresent()) {
+                ResultSet resultSet = optionalResultSet.get();
+                try {
+                    while (resultSet.next()) {
+                        cars.add(new Car(resultSet.getInt("ID"), resultSet.getString("NAME"),
+                                resultSet.getInt("COMPANY_ID")));
+                    }
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+            return cars;
+        }
+
+        @Override
+        public int insertCar(Car car) {
+            return dbUtil.executeUpdate("INSERT INTO CAR (NAME, COMPANY_ID)" +
+                    "VALUES ('" + car.getName() + "', '" + car.getCompanyId() + "');");
+        }
+    }
+  learner_created: false
+- name: test/CarSharingTest.java
+  visible: false
+  text: |
+    import org.hyperskill.hstest.dynamic.DynamicTest;
+    import org.hyperskill.hstest.exception.outcomes.WrongAnswer;
+    import org.hyperskill.hstest.stage.StageTest;
+    import org.hyperskill.hstest.testcase.CheckResult;
+    import org.hyperskill.hstest.testing.TestedProgram;
+    import org.junit.BeforeClass;
+
+    import java.io.File;
+
+    public class CarSharingTest extends StageTest<Void> {
+
+        private static final String databaseFileName = "src/carsharing/db/carsharing.mv.db";
+        private static DatabaseUtil db = new DatabaseUtil();
+
+        @BeforeClass
+        public static void deleteDatabaseFile() {
+            File file = new File(databaseFileName);
+
+            if (!file.exists()) {
+                return;
+            }
+
+            if (!file.delete()) {
+                throw new WrongAnswer("Can't delete database file before starting your program.\n" +
+                    "Make sure you close all the connections with the database file!");
+            }
+        }
+
+        @DynamicTest(order = 1)
+        public CheckResult test2_ifDatabaseExist() {
+
+            TestedProgram program = new TestedProgram();
+            program.start("-databaseFileName", "carsharing");
+            program.execute("0");
+
+            if (!program.isFinished()) {
+                return CheckResult.wrong("After choosing 'Exit' item your program should stop.");
+            }
+
+            File file = new File(databaseFileName);
+
+            if (!file.exists()) {
+                return CheckResult.wrong("Can't find a database file. It should be named 'carsharing.mv.db'" +
+                    " and located in /carsharing/db/ folder.\n" +
+                    "The file should be created right after starting the program!");
+            }
+
+            return correct();
+        }
+
+        @DynamicTest(order = 2)
+        public CheckResult test1_testMenu() {
+            TestedProgram program = new TestedProgram();
+            String output = program.start("-databaseFileName", "carsharing");
+
+            if (!output.contains("1. Log in as a manager")) {
+                return CheckResult.wrong("Start menu should contain \"1. Log in as a manager\"");
+            }
+
+            if (!output.contains("0. Exit")) {
+                return CheckResult.wrong("Start menu should contain \"0. Exit\"");
+            }
+
+            output = program.execute("1");
+
+            if (!output.contains("1. Company list")) {
+                return CheckResult.wrong("After choosing 'Log in as a manager' item you should print menu that contains '1. Company list' item");
+            }
+
+            if (!output.contains("2. Create a company")) {
+                return CheckResult.wrong("After choosing 'Log in as a manager' item you should print menu that contains '2. Create a company' item");
+            }
+
+            if (!output.contains("0. Back")) {
+                return CheckResult.wrong("After choosing 'Log in as a manager' item you should print menu that contains '0. Back' item");
+            }
+
+            output = program.execute("0");
+
+            if (!output.contains("1. Log in as a manager")) {
+                return CheckResult.wrong("After choosing '0. Back' item you should print previous menu and it should contain \"1. Log in as a manager\"");
+            }
+
+            if (!output.contains("0. Exit")) {
+                return CheckResult.wrong("After choosing '0. Back' item you should print previous menu and it should contain \"0. Exit\"");
+            }
+
+            return CheckResult.correct();
+        }
+
+        @DynamicTest(order = 3)
+        public CheckResult test3_checkDatabaseConnection() {
+            db.getConnection();
+            return correct();
+        }
+
+        @DynamicTest(order = 4)
+        public CheckResult test4_checkIfTableExists() {
+            if (!db.ifTableExist("company")) {
+                return wrong("Can't find table named 'company'");
+            }
+            if (!db.ifTableExist("car")) {
+                return wrong("Can't find table named 'car'");
+            }
+            return correct();
+        }
+
+        @DynamicTest(order = 5)
+        public CheckResult test5_checkTableColumns() {
+            String[][] companyColumns = {{"ID", "INT"}, {"NAME", "VARCHAR"}};
+            db.ifColumnsExist("company", companyColumns);
+            db.checkCompanyColumnProperties();
+
+            String[][] carColumns = {{"ID", "INT"}, {"NAME", "VARCHAR"}, {"COMPANY_ID", "INT"}};
+            db.ifColumnsExist("car", carColumns);
+            db.checkCarColumnProperties();
+
+            String[][] customerColumns = {{"ID", "INT"}, {"NAME", "VARCHAR"}, {"RENTED_CAR_ID", "INT"}};
+            db.ifColumnsExist("customer", customerColumns);
+            db.checkCustomerColumnProperties();
+            return correct();
+        }
+
+        @DynamicTest(order = 6)
+        public CheckResult test6_testAddCompany() {
+
+            TestedProgram program = new TestedProgram();
+            program.start("-databaseFileName", "carsharing");
+
+            db.clearCustomerTable();
+            db.clearCarTable();
+            db.clearCompanyTable();
+
+            program.execute("1");
+            String output = program.execute("1");
+
+            if (!output.contains("The company list is empty")) {
+                return wrong("If no company has been created you should print 'The company list is empty' when '1. Company list' item is chosen");
+            }
+
+            output = program.execute("2");
+
+            if (!output.contains("Enter the company name")) {
+                return wrong("After choosing '2. Create a company' item you should ask to enter a company name.\n" +
+                    "Your output should contain 'Enter the company name:'");
+            }
+
+            program.execute("Super company");
+            output = program.execute("1");
+
+            if (!output.contains("1. Super company")) {
+                return wrong("In the company list expected one company.\n" +
+                    "Your output should contain '1. Super company'");
+            }
+
+            db.checkCompany("Super company");
+
+            program.execute("0\n2\nAnother company");
+            program.execute("2\nOne more company");
+
+            db.checkCompany("Another company");
+            db.checkCompany("One more company");
+
+            output = program.execute("1");
+
+            if (!output.contains("1. Super company")) {
+                return wrong("In the company list expected 'Super company' company.\n" +
+                    "Your output should contain '1. Super company'.\n" +
+                    "Companies should be sorted by 'ID' column");
+            }
+
+            if (!output.contains("2. Another company")) {
+                return wrong("In the company list expected 'Another company' company.\n" +
+                    "Your output should contain '2. Another company'.\n" +
+                    "Companies should be sorted by 'ID' column");
+            }
+
+            if (!output.contains("3. One more company")) {
+                return wrong("In the company list expected 'One more company' company.\n" +
+                    "Your output should contain '2. One more company'.\n" +
+                    "Companies should be sorted by 'ID' column");
+            }
+
+            if (!output.contains("0. Back")) {
+                return wrong("There is no back option in the company list.\n" +
+                    "Your output should contain '0. Back'");
+            }
+
+            program.execute("2");
+
+            return correct();
+        }
+
+        @DynamicTest(order = 7)
+        public CheckResult test7_testAddCar() {
+
+            TestedProgram program = new TestedProgram();
+            program.start("-databaseFileName", "carsharing");
+            String output;
+
+            db.clearCarTable();
+            db.clearCompanyTable();
+            db.clearCustomerTable();
+
+            program.execute("1");
+            program.execute("2");
+            program.execute("Car To Go");
+            program.execute("2");
+            program.execute("Drive Now");
+
+            db.checkCompany("Car To Go");
+            db.checkCompany("Drive Now");
+
+            output = program.execute("1");
+
+            if (!output.contains("1. Car To Go")) {
+                return wrong("In the company list expected 'Car To Go' company.\n" +
+                    "Your output should contain '1. Car To Go'.\n" +
+                    "Companies should be sorted by 'ID' column");
+            }
+
+            if (!output.contains("2. Drive Now")) {
+                return wrong("In the company list expected 'Drive Now' company.\n" +
+                    "Your output should contain '2. Drive Now'\n" +
+                    "Companies should be sorted by 'ID' column");
+            }
+
+            if (!output.contains("0. Back")) {
+                return wrong("There is no back option in the company list.\n" +
+                    "Your output should contain '0. Back'");
+            }
+
+            output = program.execute("1");
+
+            if (!output.contains("1. Car list")) {
+                return wrong("After choosing company you should print menu that contains '1. Car list' item");
+            }
+
+            if (!output.contains("2. Create a car")) {
+                return wrong("After choosing company you should print menu that contains '2. Create a car' item");
+            }
+
+            if (!output.contains("0. Back")) {
+                return wrong("After choosing company you should print menu that contains '0. Back' item");
+            }
+
+            output = program.execute("1");
+
+            if (!output.contains("The car list is empty!")) {
+                return wrong("If no cars were added to the company you should print 'The car list is empty!'");
+            }
+
+            output = program.execute("2");
+
+            if (!output.contains("Enter the car name:")) {
+                return wrong("After choosing 'Create a car' item you should ask to enter a car name. " +
+                    "Your output should contain 'Enter the car name:'");
+            }
+
+            program.execute("Hyundai Venue");
+            db.checkCar("Car To Go", "Hyundai Venue");
+
+            program.execute("2");
+            program.execute("Maruti Suzuki Dzire");
+            db.checkCar("Car To Go", "Maruti Suzuki Dzire");
+
+            output = program.execute("1");
+
+            if (!output.contains("1. Hyundai Venue")) {
+                return wrong("In the car list expected 'Hyundai Venue' car.\n" +
+                    "Your output should contain '1. Hyundai Venue'\n" +
+                    "Cars should be sorted by 'ID' column");
+            }
+
+            if (!output.contains("2. Maruti Suzuki Dzire")) {
+                return wrong("In the car list expected 'Maruti Suzuki Dzire' car.\n" +
+                    "Your output should contain '2. Maruti Suzuki Dzire'\n" +
+                    "Cars should be sorted by 'ID' column");
+            }
+
+            program.execute("0");
+
+            program.execute("1");
+            program.execute("2");
+
+            output = program.execute("1");
+
+            if (!output.contains("The car list is empty!")) {
+                return wrong("If no cars were added to the company you should print 'The car list is empty!'");
+            }
+
+            program.execute("2");
+            program.execute("Lamborghini Urraco");
+
+            output = program.execute("1");
+
+            if (!output.contains("1. Lamborghini Urraco")) {
+                return wrong("In the car list expected 'Lamborghini Urraco' car.\n" +
+                    "Your output should contain '1. Lamborghini Urraco'");
+            }
+
+            if (output.contains("Hyundai Venue")) {
+                return wrong("Your output contains 'Hyundai Venue'. This car is from another company");
+            }
+
+            if (output.contains("Maruti Suzuki Dzire")) {
+                return wrong("Your output contains 'Maruti Suzuki Dzire'. This car is from another company");
+            }
+
+            db.checkCar("Drive Now", "Lamborghini Urraco");
+
+            program.execute("0");
+            program.execute("0");
+            program.execute("0");
+
+            return correct();
+        }
+
+        @DynamicTest(order = 8)
+        public CheckResult test8_testAddCustomer() {
+
+            TestedProgram program = new TestedProgram();
+            String output = program.start("-databaseFileName", "carsharing");
+
+            db.clearCustomerTable();
+
+            if (!output.contains("2. Log in as a customer")) {
+                return wrong("Start menu should contain \"2. Log in as a customer\"");
+            }
+
+            if (!output.contains("3. Create a customer")) {
+                return wrong("Start menu should contain \"3. Create a customer\"");
+            }
+
+            output = program.execute("2");
+
+            if (!output.contains("The customer list is empty!")) {
+                return wrong("If no customers were created you should print 'The customer list is empty!'");
+            }
+
+            output = program.execute("3");
+
+            if (!output.contains("Enter the customer name:")) {
+                return wrong("After choosing '3. Create a customer' option you should ask to enter a customer name.\n" +
+                    "Your output should contain 'Enter the customer name:'");
+            }
+
+            program.execute("First customer");
+            db.checkCustomer("First customer", null);
+
+            program.execute("3");
+            output = program.execute("Second customer");
+            db.checkCustomer("Second customer", null);
+
+            if (!output.contains("2. Log in as a customer")) {
+                return wrong("After creating a customer you should print main menu again.\n" +
+                    "Your output should contain '2. Log in as a customer'");
+            }
+
+            output = program.execute("2");
+
+
+            if (!output.contains("1. First customer")) {
+                return wrong("In the customer list expected 'First customer' customer.\n" +
+                    "Your output should contain '1. First customer'\n" +
+                    "Customers should be sorted by 'ID' column");
+            }
+
+            if (!output.contains("2. Second customer")) {
+                return wrong("In the customer list expected 'Second customer' customer.\n" +
+                    "Your output should contain '2. Second customer'\n" +
+                    "Customers should be sorted by 'ID' column");
+            }
+
+            output = program.execute("1");
+
+            if (!output.contains("1. Rent a car")) {
+                return wrong("After choosing customer you should print menu that contains '1. Rent a car' item");
+            }
+
+            if (!output.contains("2. Return a rented car")) {
+                return wrong("After choosing customer you should print menu that contains '2. Return a rented car' item");
+            }
+
+            if (!output.contains("3. My rented car")) {
+                return wrong("After choosing customer you should print menu that contains '3. My rented car' item");
+            }
+
+            if (!output.contains("0. Back")) {
+                return wrong("After choosing customer you should print menu that contains '3. My rented car' item");
+            }
+
+            output = program.execute("3");
+
+            if (!output.contains("You didn't rent a car!")) {
+                return wrong("After choosing '3. My rented car' option you should print 'You didn't rent a car!' if a customer didn't rent a car.");
+            }
+
+            output = program.execute("2");
+
+            if (!output.contains("You didn't rent a car!")) {
+                return wrong("After choosing '2. Return a rented car' option you should print 'You didn't rent a car!' if a customer didn't rent a car.");
+            }
+
+            return correct();
+        }
+
+        @DynamicTest(order = 9)
+        public CheckResult test9_testRentCar() {
+
+            TestedProgram program = new TestedProgram();
+            String output;
+            program.start("-databaseFileName", "carsharing");
+
+            db.checkCustomer("First customer", null);
+            db.checkCustomer("Second customer", null);
+
+            db.checkCompany("Car To Go");
+            db.checkCompany("Drive Now");
+
+            db.checkCar("Drive Now", "Lamborghini Urraco");
+            db.checkCar("Car To Go", "Hyundai Venue");
+            db.checkCar("Car To Go", "Maruti Suzuki Dzire");
+
+            program.execute("2");
+            program.execute("1");
+
+            output = program.execute("1");
+
+            if (!output.contains("1. Car To Go")) {
+                return wrong("In the company list expected 'Car To Go' company.\n" +
+                    "Your output should contain '1. Car To Go'.\n" +
+                    "Companies should be sorted by 'ID' column");
+            }
+
+            if (!output.contains("2. Drive Now")) {
+                return wrong("In the company list expected 'Drive Now' company.\n" +
+                    "Your output should contain '2. Drive Now'\n" +
+                    "Companies should be sorted by 'ID' column");
+            }
+
+            if (!output.contains("0. Back")) {
+                return wrong("There is no back option in the company list.\n" +
+                    "Your output should contain '0. Back'");
+            }
+
+            output = program.execute("1");
+
+            if (!output.contains("1. Hyundai Venue")) {
+                return wrong("In the car list expected 'Hyundai Venue' car.\n" +
+                    "Your output should contain '1. Hyundai Venue'\n" +
+                    "Cars should be sorted by 'ID' column");
+            }
+
+            if (!output.contains("2. Maruti Suzuki Dzire")) {
+                return wrong("In the car list expected 'Maruti Suzuki Dzire' car.\n" +
+                    "Your output should contain '2. Maruti Suzuki Dzire'\n" +
+                    "Cars should be sorted by 'ID' column");
+            }
+
+            output = program.execute("1");
+
+            if (!output.contains("You rented 'Hyundai Venue'")) {
+                return wrong("After renting 'Hyundai Venue' you shoul print 'You rented 'Hyundai Venue'");
+            }
+
+            db.checkCustomer("First customer", "Hyundai Venue");
+
+            if (!output.contains("3. My rented car")) {
+                return wrong("After renting a car you should print menu that contains '3. My rented car' option.");
+            }
+
+            output = program.execute("3");
+
+            if (!output.contains("Hyundai Venue")) {
+                return wrong("After choosing '3. My rented car' option expected car name is 'Hyundai Venue'");
+            }
+
+            if (!output.contains("Car To Go")) {
+                return wrong("After choosing '3. My rented car' option expected company name is 'Car To Go'");
+            }
+
+            output = program.execute("1");
+
+            if (!output.contains("You've already rented a car!")) {
+                return wrong("If a customer has already rented a car and is trying to rent another one you should print 'You've already rented a car!'");
+            }
+
+            output = program.execute("2");
+
+            if (!output.contains("You've returned a rented car!")) {
+                return wrong("If a customer has already returned a rented car and is trying to return another one you should print 'You've returned a rented car!'");
+            }
+
+            db.checkCustomer("First customer", null);
+
+            program.execute("0");
+            program.execute("0");
+
+            return correct();
+        }
+
+        @DynamicTest(order = 10)
+        public CheckResult test10_testRentedCarInList() {
+
+            TestedProgram program = new TestedProgram();
+            String output;
+            program.start("-databaseFileName", "carsharing");
+
+            program.execute("2");
+            program.execute("2");
+            program.execute("1");
+            program.execute("1");
+            program.execute("1");
+            program.execute("0");
+
+            program.execute("2");
+            program.execute("1");
+            program.execute("1");
+
+            output = program.execute("1");
+            if (output.contains("Hyundai Venue")) {
+                return wrong("You shouldn't print out a car if it is already rented!");
+            }
+
+            program.execute("0");
+            program.execute("0");
+            program.execute("0");
+
+            return correct();
+        }
+
+        private CheckResult wrong(String message) {
+            db.closeConnection();
+            return CheckResult.wrong(message);
+        }
+
+        private CheckResult correct() {
+            db.closeConnection();
+            return CheckResult.correct();
+        }
+    }
+  learner_created: false
+- name: test/DatabaseUtil.java
+  visible: false
+  text: |
+    import org.hyperskill.hstest.exception.outcomes.WrongAnswer;
+
+    import java.sql.*;
+    import java.util.HashMap;
+
+    public class DatabaseUtil {
+
+        private Connection connection = null;
+        private static final String databaseFilePath = "./src/carsharing/db/carsharing";
+
+        public Connection getConnection() {
+            if (connection != null) {
+                return connection;
+            }
+            try {
+                connection = DriverManager.getConnection("jdbc:h2:" + databaseFilePath);
+            } catch (SQLException ignored) {
+                throw new WrongAnswer("Can't connect to the database.");
+            }
+            return connection;
+        }
+
+        public void closeConnection() {
+            if (connection != null) {
+                try {
+                    connection.close();
+                } catch (SQLException ignored) {
+                    System.out.println(ignored.getErrorCode());
+                    throw new WrongAnswer("Can't close connection to the database.");
+                }
+                connection = null;
+            }
+        }
+
+        public ResultSet executeQuery(String query) {
+            try {
+                return getConnection().createStatement().executeQuery(query);
+            } catch (SQLException exception) {
+                throw new WrongAnswer("Can't execute query to the database.\n" +
+                        "SQL Message:\n" + exception.getMessage());
+            }
+        }
+
+        public boolean ifTableExist(String tableName) {
+            try {
+                tableName = tableName.toUpperCase();
+                ResultSet resultSet = executeQuery("SHOW TABLES");
+                while (resultSet.next()) {
+                    if (resultSet.getString("TABLE_NAME").equals(tableName)) {
+                        return true;
+                    }
+                }
+                return false;
+            } catch (SQLException exception) {
+                throw new WrongAnswer("Can't execute query to the database.\n" +
+                        "SQL Message:\n" + exception.getMessage());
+            }
+        }
+
+        public void ifColumnsExist(String tableName, String[][] columns) {
+            try {
+                ResultSet resultSet = getConnection()
+                        .createStatement()
+                        .executeQuery("SHOW COLUMNS FROM " + tableName.toUpperCase());
+
+                HashMap<String, String> correctColumns = new HashMap<>();
+                for (String[] column : columns) {
+                    correctColumns.put(column[0], column[1]);
+                }
+
+                while (resultSet.next()) {
+                    String columnName = resultSet.getString("FIELD");
+                    if (correctColumns.containsKey(columnName)) {
+                        if (!resultSet.getString("TYPE").contains(correctColumns.get(columnName))) {
+                            throw new WrongAnswer("In the '" + tableName.toUpperCase() + "' table '" + columnName
+                                    + "' column should be of " + correctColumns.get(columnName) + " type.");
+                        }
+                        correctColumns.remove(columnName);
+                    }
+                }
+                if (!correctColumns.isEmpty()) {
+                    throw new WrongAnswer("Can't find in '" + tableName.toUpperCase() + "' table the following columns: " + correctColumns.toString());
+                }
+            } catch (SQLException exception) {
+                throw new WrongAnswer("Can't execute query to the database.\n" +
+                        "SQL Message:\n" + exception.getMessage());
+            }
+        }
+
+        public void clearCompanyTable() {
+            try {
+                getConnection().createStatement().execute("DELETE FROM COMPANY");
+                getConnection().createStatement().execute("ALTER TABLE COMPANY ALTER COLUMN id RESTART WITH 1");
+            } catch (SQLException ignored) {
+                throw new WrongAnswer("Can't delete rows from the COMPANY table.");
+            }
+        }
+
+        public void clearCarTable() {
+            try {
+                getConnection().createStatement().execute("DELETE FROM CAR");
+                getConnection().createStatement().execute("ALTER TABLE CAR ALTER COLUMN id RESTART WITH 1");
+            } catch (SQLException ignored) {
+                throw new WrongAnswer("Can't delete rows from the COMPANY table.");
+            }
+        }
+
+        public void clearCustomerTable() {
+            try {
+                getConnection().createStatement().execute("DELETE FROM CUSTOMER");
+            } catch (SQLException ignored) {
+                throw new WrongAnswer("Can't delete rows from the CUSTOMER table.");
+            }
+        }
+
+        public void checkCompany(String name) {
+            try {
+                PreparedStatement preparedStatement = getConnection().prepareStatement("SELECT * FROM COMPANY WHERE NAME = ?");
+                preparedStatement.setString(1, name);
+                ResultSet resultSet = preparedStatement.executeQuery();
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Can't find '" + name + "' company in the 'COMPANY' table\n" +
+                            "Make sure you don't clear the database after starting the program");
+                }
+            } catch (SQLException ignored) {
+                throw new WrongAnswer("Can't select data from the 'COMPANY' table!");
+            }
+        }
+
+        public void checkCar(String companyName, String carName) {
+            try {
+                PreparedStatement companyStatement = getConnection().prepareStatement("SELECT * FROM COMPANY WHERE NAME = ?");
+                companyStatement.setString(1, companyName);
+
+                PreparedStatement carStatement = getConnection().prepareStatement("SELECT * FROM CAR WHERE NAME = ?");
+                carStatement.setString(1, carName);
+
+                ResultSet resultSet = companyStatement.executeQuery();
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Can't find '" + companyName + "' company in the 'COMPANY' table.");
+                }
+
+                int id = resultSet.getInt("ID");
+
+                resultSet = carStatement.executeQuery();
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Can't find '" + carName + "' car in the 'CAR' table.\n" +
+                            "Make sure you don't clear the database after starting the program");
+                }
+                if (resultSet.getInt("COMPANY_ID") != id) {
+                    throw new WrongAnswer("'COMPANY_ID' of the '" + carName + "' car is wrong. It should reference to the '" + companyName + "' company ID.");
+                }
+            } catch (SQLException exception) {
+                throw new WrongAnswer("Can't execute query to the database.\n" +
+                        "SQL Message:\n" + exception.getMessage());
+            }
+        }
+
+        public void checkCustomer(String name, String carName) {
+            try {
+                PreparedStatement preparedStatement = getConnection().prepareStatement("SELECT * FROM CUSTOMER WHERE NAME = ?");
+                preparedStatement.setString(1, name);
+                ResultSet resultSet = preparedStatement.executeQuery();
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Can't find '" + name + "' customer in the 'CUSTOMER' table.\n" +
+                            "Make sure you don't clear the database after starting the program");
+                }
+
+                if (carName == null) {
+                    if (resultSet.getString("RENTED_CAR_ID") != null) {
+                        throw new WrongAnswer("'RENTED_CAR_ID' of the '" + name + "' customer is wrong. It should be NULL");
+                    }
+                    return;
+                }
+
+                PreparedStatement carStatement = getConnection().prepareStatement("SELECT * FROM CAR WHERE NAME = ?");
+                carStatement.setString(1, carName);
+                ResultSet carResultSet = carStatement.executeQuery();
+
+                if (!carResultSet.next()) {
+                    throw new WrongAnswer("Can't find '" + carName + "' car in the 'CAR' table.\n" +
+                            "Make sure you don't clear the database after starting the program");
+                }
+
+                int carId = carResultSet.getInt("ID");
+
+                if (resultSet.getInt("RENTED_CAR_ID") != carId) {
+                    throw new WrongAnswer("'RENTED_CAR_ID' of the '" + name + "' customer is wrong. It should reference to the '" + carName + "' car ID.");
+                }
+            } catch (SQLException ignored) {
+                throw new WrongAnswer("Can't select data from the 'COMPANY' table!");
+            }
+        }
+
+
+        public void checkCompanyColumnProperties() {
+            try {
+                ResultSet resultSet = getConnection().createStatement().executeQuery("SELECT * FROM INFORMATION_SCHEMA.CONSTRAINTS" +
+                        " WHERE COLUMN_LIST = 'ID' AND TABLE_NAME = 'COMPANY' AND CONSTRAINT_TYPE = 'PRIMARY KEY'");
+
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Looks like 'ID' column in 'COMPANY' table doesn't have PRIMARY KEY constraint.");
+                }
+
+                resultSet = getConnection().createStatement().executeQuery("SELECT * FROM INFORMATION_SCHEMA.CONSTRAINTS" +
+                        " WHERE COLUMN_LIST = 'NAME' AND TABLE_NAME = 'COMPANY' AND CONSTRAINT_TYPE = 'UNIQUE'");
+
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Looks like 'NAME' column in 'COMPANY' table doesn't have UNIQUE constraint.");
+                }
+
+                resultSet = getConnection().createStatement().executeQuery("SELECT  * FROM INFORMATION_SCHEMA.COLUMNS" +
+                        " WHERE COLUMN_NAME = 'NAME' AND TABLE_NAME = 'COMPANY' AND IS_NULLABLE = 'NO'");
+
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Looks like 'NAME' column in 'COMPANY' table doesn't have NOT NULL constraint.");
+                }
+            } catch (SQLException exception) {
+                throw new WrongAnswer("Can't execute query to the database.\n" +
+                        "SQL Message:\n" + exception.getMessage());
+            }
+        }
+
+        public void checkCarColumnProperties() {
+            try {
+                ResultSet resultSet = getConnection().createStatement().executeQuery("SELECT * FROM INFORMATION_SCHEMA.CONSTRAINTS" +
+                        " WHERE COLUMN_LIST = 'ID' AND TABLE_NAME = 'CAR' AND CONSTRAINT_TYPE = 'PRIMARY KEY'");
+
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Looks like 'ID' column in 'CAR' table doesn't have PRIMARY KEY constraint.");
+                }
+
+                resultSet = getConnection().createStatement().executeQuery("SELECT * FROM INFORMATION_SCHEMA.COLUMNS" +
+                        " WHERE COLUMN_NAME = 'NAME' AND TABLE_NAME = 'CAR' AND IS_NULLABLE = 'NO'");
+
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Looks like 'NAME' column in 'CAR' table doesn't have NOT NULL constraint.");
+                }
+
+                resultSet = getConnection().createStatement().executeQuery("SELECT * FROM INFORMATION_SCHEMA.COLUMNS" +
+                        " WHERE COLUMN_NAME = 'COMPANY_ID' AND TABLE_NAME = 'CAR' AND IS_NULLABLE = 'NO'");
+
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Looks like 'COMPANY_ID' column in 'CAR' table doesn't have NOT NULL constraint.");
+                }
+
+                resultSet = getConnection().createStatement().executeQuery("SELECT  * FROM INFORMATION_SCHEMA.CONSTRAINTS" +
+                        " WHERE COLUMN_LIST = 'COMPANY_ID' AND TABLE_NAME = 'CAR' AND CONSTRAINT_TYPE = 'REFERENTIAL'");
+
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Looks like 'COMPANY_ID' column in 'CAR' table is not FOREIGN KEY. It should refer to 'ID' column of the 'COMPANY' table.");
+                }
+
+                if (!resultSet.getString("SQL").replace("\"", "").contains("COMPANY(ID)")) {
+                    throw new WrongAnswer("Looks like 'COMPANY_ID' column in 'CAR' table doesn't refer to 'ID' column of the 'COMPANY' table.");
+                }
+            } catch (SQLException exception) {
+                throw new WrongAnswer("Can't execute query to the database.\n" +
+                        "SQL Message:\n" + exception.getMessage());
+            }
+        }
+
+        public void checkCustomerColumnProperties() {
+            try {
+                ResultSet resultSet = getConnection().createStatement().executeQuery("SELECT * FROM INFORMATION_SCHEMA.CONSTRAINTS" +
+                        " WHERE COLUMN_LIST = 'ID' AND TABLE_NAME = 'CUSTOMER' AND CONSTRAINT_TYPE = 'PRIMARY KEY'");
+
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Looks like 'ID' column in 'CUSTOMER' table doesn't have PRIMARY KEY constraint.");
+                }
+
+                resultSet = getConnection().createStatement().executeQuery("SELECT * FROM INFORMATION_SCHEMA.COLUMNS" +
+                        " WHERE COLUMN_NAME = 'NAME' AND TABLE_NAME = 'CUSTOMER' AND IS_NULLABLE = 'NO'");
+
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Looks like 'NAME' column in 'CUSTOMER' table doesn't have NOT NULL constraint.");
+                }
+
+                resultSet = getConnection().createStatement().executeQuery("SELECT * FROM INFORMATION_SCHEMA.COLUMNS" +
+                        " WHERE COLUMN_NAME = 'RENTED_CAR_ID' AND TABLE_NAME = 'CUSTOMER' AND IS_NULLABLE = 'YES'");
+
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Looks like 'RENTED_CAR_ID' column in 'CUSTOMER' table has NOT NULL constraint, but it shouldn't");
+                }
+
+                resultSet = getConnection().createStatement().executeQuery("SELECT  * FROM INFORMATION_SCHEMA.CONSTRAINTS" +
+                        " WHERE COLUMN_LIST = 'RENTED_CAR_ID' AND TABLE_NAME = 'CUSTOMER' AND CONSTRAINT_TYPE = 'REFERENTIAL'");
+
+                if (!resultSet.next()) {
+                    throw new WrongAnswer("Looks like 'RENTED_CAR_ID' column in 'CUSTOMER' table is not FOREIGN KEY. It should refer to 'ID' column of the 'CAR' table.");
+                }
+
+                if (!resultSet.getString("SQL").replace("\"", "").contains("CAR(ID)")) {
+                    throw new WrongAnswer("Looks like 'RENTED_CAR_ID' column in 'CUSTOMER' table doesn't refer to 'ID' column of the 'CAR' table.");
+                }
+            } catch (SQLException exception) {
+                throw new WrongAnswer("Can't execute query to the database.\n" +
+                        "SQL Message:\n" + exception.getMessage());
+            }
+        }
+    }
+  learner_created: false
+- name: src/carsharing/db/carsharing.trace.db
+  visible: true
+  text: "2023-02-17 19:41:07 jdbc[3]: exception\norg.h2.jdbc.JdbcSQLSyntaxErrorException:\
+    \ Table \"COMPANY\" not found; SQL statement:\nCREATE TABLE IF NOT EXISTS CAR(\n\
+    \tID INTEGER AUTO_INCREMENT,\n\tNAME VARCHAR NOT NULL,\n\tCOMPANY_ID INTEGER NOT\
+    \ NULL,\n\tCONSTRAINT pk_car_id PRIMARY KEY(ID),\n\tCONSTRAINT uq_car_name UNIQUE(NAME),\n\
+    \tCONSTRAINT fk_car_id_to_company_id FOREIGN KEY(COMPANY_ID) REFERENCES COMPANY(ID)\n\
+    ) [42102-200]\n2023-02-17 19:44:26 jdbc[3]: exception\norg.h2.jdbc.JdbcSQLSyntaxErrorException:\
+    \ Table \"COMPANY\" not found; SQL statement:\nCREATE TABLE IF NOT EXISTS CAR(\n\
+    \tID INTEGER AUTO_INCREMENT,\n\tNAME VARCHAR NOT NULL,\n\tCOMPANY_ID INTEGER NOT\
+    \ NULL,\n\tCONSTRAINT pk_car_id PRIMARY KEY(ID),\n\tCONSTRAINT uq_car_name UNIQUE(NAME),\n\
+    \tCONSTRAINT fk_car_id_to_company_id FOREIGN KEY(COMPANY_ID) REFERENCES COMPANY(ID)\n\
+    ) [42102-200]\n2023-02-17 19:50:08 jdbc[3]: exception\norg.h2.jdbc.JdbcSQLSyntaxErrorException:\
+    \ Table \"COMPANY\" not found; SQL statement:\nCREATE TABLE IF NOT EXISTS CAR(\n\
+    \tID INTEGER AUTO_INCREMENT,\n\tNAME VARCHAR NOT NULL,\n\tCOMPANY_ID INTEGER NOT\
+    \ NULL,\n\tCONSTRAINT pk_car_id PRIMARY KEY(ID),\n\tCONSTRAINT uq_car_name UNIQUE(NAME),\n\
+    \tCONSTRAINT fk_car_id_to_company_id FOREIGN KEY(COMPANY_ID) REFERENCES COMPANY(ID)\n\
+    ) [42102-200]\n2023-02-17 19:55:38 jdbc[3]: exception\norg.h2.jdbc.JdbcSQLSyntaxErrorException:\
+    \ Table \"COMPANY\" not found; SQL statement:\nCREATE TABLE IF NOT EXISTS CAR(\n\
+    \tID INTEGER AUTO_INCREMENT,\n\tNAME VARCHAR NOT NULL,\n\tCOMPANY_ID INTEGER NOT\
+    \ NULL,\n\tCONSTRAINT pk_car_id PRIMARY KEY(ID),\n\tCONSTRAINT uq_car_name UNIQUE(NAME),\n\
+    \tCONSTRAINT fk_car_id_to_company_id FOREIGN KEY(COMPANY_ID) REFERENCES COMPANY(ID)\n\
+    ) [42102-200]\n"
+  learner_created: false
+- name: src/carsharing/resources/createscripts/create_scripts_stage_four.sql
+  visible: true
+  learner_created: true
+- name: src/carsharing/resources/db/carsharing.mv.db
+  visible: true
+  learner_created: true
+- name: src/carsharing/resources/db/carsharing.trace.db
+  visible: true
+  learner_created: true
+- name: src/carsharing/dao/model/Customer.java
+  visible: true
+  learner_created: true
+- name: src/carsharing/dao/CustomerDao.java
+  visible: true
+  learner_created: true
+- name: src/carsharing/dao/CustomerDaoImpl.java
+  visible: true
+  learner_created: true
+feedback_link: https://hyperskill.org/learn/step/11504#comment
+status: Solved
+feedback:
+  message: Well done! You've finished the project. Select a new project on <a href="https://hyperskill.org/projects">Hyperskill</a>
+    to continue learning.
+  time: "Fri, 03 Mar 2023 02:52:12 UTC"
+record: -1

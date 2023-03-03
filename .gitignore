@@ -1,0 +1,7 @@
+# Project exclude paths
+/.gradle/
+/Car Sharing/task/build/
+/Car Sharing/task/out/
+/Car Sharing/task/out/build/
+/Car Sharing/task/out/production/classes/
+/Car Sharing/task/out/test/classes/
