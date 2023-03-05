@@ -65,7 +65,7 @@ public class CreateUpdateScriptProcessor {
             }
         }
     }
-
+//Use it during "check stage" process
     public static void executeCreateForCheck() {
         if (createScriptsForCheck.isDirectory()) {
             File[] files = createScriptsForCheck.listFiles();

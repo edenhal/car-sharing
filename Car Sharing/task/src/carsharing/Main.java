@@ -21,7 +21,6 @@ public class Main {
 
     public static void main(String[] args) {
         CreateUpdateScriptProcessor.executeCreate();
-//        CreateUpdateScriptProcessor.executeCreateForCheck();
 
         boolean exit = false;
         while (!exit) {
@@ -40,6 +39,7 @@ public class Main {
 
     private static void printMainMenu() {
         System.out.println("""
+                
                 1. Log in as a manager
                 2. Log in as a customer
                 3. Create a customer
@@ -186,7 +186,7 @@ public class Main {
     private static Optional<Company> chooseCompany() {
         Optional<List<Company>> optionalCompanies = companyDao.getAllCompanies();
         if (optionalCompanies.isPresent()) {
-            System.out.println("Choose a company:");
+            System.out.println("\nChoose a company:");
             List<Company> companies = optionalCompanies.get();
             companies.forEach(company ->
                     System.out.printf("%d. %s%n", (companies.indexOf(company) + 1), company));
@@ -207,7 +207,7 @@ public class Main {
         if (carList.isEmpty()) {
             System.out.printf("No available cars in the %s company%n", company.getName());
         } else {
-            System.out.println("Choose a car:");
+            System.out.println("\nChoose a car:");
             carList.forEach(car ->
                     System.out.printf("%d. %s%n", (carList.indexOf(car) + 1), car));
             System.out.println("0. Back");

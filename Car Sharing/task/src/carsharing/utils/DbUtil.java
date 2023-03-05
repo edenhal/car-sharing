@@ -8,7 +8,7 @@ public class DbUtil {
     private static volatile DbUtil singleInstance;
     private static final String JDBC_DRIVER = "org.h2.Driver";
 
-    // "jdbc:h2:./src/carsharing/db/carsharing;Mode=MySQL";
+    // "jdbc:h2:./src/carsharing/db/carsharing;Mode=MySQL"; this conn string for "check stage" process
     private static final String DB_URL = "jdbc:h2:./Car Sharing/task/src/carsharing/resources/db/carsharing;Mode=MySQL";
     private static Connection connection;
 

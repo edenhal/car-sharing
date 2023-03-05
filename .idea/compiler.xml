@@ -2,6 +2,12 @@
 <project version="4">
   <component name="CompilerConfiguration">
     <bytecodeTargetLevel target="17">
+      <module name="Car_Sharing.Car_Sharing-task-build-classes-java.main" target="15" />
+      <module name="Car_Sharing.Car_Sharing-task-build-generated-sources-annotationProcessor-java.main" target="15" />
+      <module name="Car_Sharing.Car_Sharing-task-build-generated-sources-headers-java.main" target="15" />
+      <module name="Car_Sharing.Car_Sharing-task-build-reports-tests.main" target="15" />
+      <module name="Car_Sharing.Car_Sharing-task-build-test-results.main" target="15" />
+      <module name="Car_Sharing.Car_Sharing-task-build-tmp.main" target="15" />
       <module name="Car_Sharing.Car_Sharing-task-out.main" target="15" />
       <module name="Car_Sharing.Car_Sharing-task.main" target="15" />
       <module name="Car_Sharing.util.main" target="15" />
